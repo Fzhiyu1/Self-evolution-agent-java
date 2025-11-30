@@ -1,0 +1,11 @@
+# LLM API Configuration
+# Copy this file to config.properties and fill in your settings
+
+# API endpoint (OpenAI compatible)
+API_URL=https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+
+# Your API key
+API_KEY=your-api-key-here
+
+# Model name
+MODEL=qwen3-coder-plus
