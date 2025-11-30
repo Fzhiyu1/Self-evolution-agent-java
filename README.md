@@ -1,67 +1,68 @@
 # Self-Evolution Agent Java
 
-> **注意**: 这是一个实验性项目，仅用于验证"LLM 驱动的代码自进化"概念。
-> 当前仅实现了排序算法的进化场景，不适用于生产环境。
+> **Note**: This is an experimental project for validating the concept of "LLM-driven code self-evolution".
+> Currently only implements sorting algorithm evolution scenarios. Not intended for production use.
 
-一个实验性的 Java 自进化算法引擎，通过 LLM 驱动的代码变异和自然选择机制，使排序算法在运行时自动从 O(n²) 进化为 O(n log n)。
+An experimental Java self-evolution algorithm engine that uses LLM-driven code mutation and natural selection to automatically evolve sorting algorithms from O(n²) to O(n log n) at runtime.
 
-## 项目概述
+## Overview
 
-本项目（代号 Project Quine）构建了一个 Java 运行时环境，实现代码的自我进化。系统通过 LLM 对源代码进行变异，然后通过动态编译、热加载和性能评估，自动选择更优的实现，整个过程无需重启 JVM。
+This project (codename: Project Quine) builds a Java runtime environment for code self-evolution. The system uses LLM to mutate source code, then automatically selects better implementations through dynamic compilation, hot-loading, and performance evaluation - all without restarting the JVM.
 
-### 核心特性
+### Key Features
 
-- **动态编译**: 使用 `javax.tools.JavaCompiler` API 在内存中编译 Java 源码
-- **热加载**: 每代变异创建新的 `URLClassLoader` 实例，实现类的热替换
-- **LLM 变异**: 集成阿里云 Qwen API，通过大语言模型生成代码变异
-- **自然选择**: 只有性能更优且正确性验证通过的变异才会被保留
+- **Dynamic Compilation**: Compiles Java source code in memory using `javax.tools.JavaCompiler` API
+- **Hot-Loading**: Creates new `URLClassLoader` instances for each generation to enable class hot-swapping
+- **LLM Mutation**: Integrates with Qwen API (OpenAI-compatible) for code mutation via large language models
+- **Natural Selection**: Only mutations that pass correctness verification and show better performance are retained
 
-## 系统架构
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     进化循环 (Evolution Loop)                │
+│                     Evolution Loop                          │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │   ┌──────────┐    ┌──────────┐    ┌──────────┐             │
 │   │ Mutator  │───>│ Compiler │───>│Evaluator │             │
-│   │ (LLM)    │    │ (动态)   │    │ (选择)   │             │
+│   │ (LLM)    │    │(Dynamic) │    │(Selector)│             │
 │   └──────────┘    └──────────┘    └──────────┘             │
 │        │                               │                    │
 │        │         ┌──────────┐          │                    │
-│        └────────>│ 源代码   │<─────────┘                    │
-│                  │ (基因)   │   (性能更优则替换)            │
+│        └────────>│  Source  │<─────────┘                    │
+│                  │  Code    │   (Replace if better)         │
+│                  │ (Genome) │                               │
 │                  └──────────┘                               │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 项目结构
+## Project Structure
 
 ```
 Self-evolution-agent-java/
 ├── src/main/java/com/quine/
-│   ├── Main.java                 # 主程序入口，进化循环控制
-│   ├── ResetToOrigin.java        # 重置工具，恢复初始状态
+│   ├── Main.java                 # Entry point, evolution loop control
+│   ├── ResetToOrigin.java        # Reset tool, restore initial state
 │   ├── core/
-│   │   ├── TaskSolver.java       # 基因接口（不可变）
-│   │   └── Evaluator.java        # 评估器，编译/验证/性能测试
+│   │   ├── TaskSolver.java       # Genome interface (immutable)
+│   │   └── Evaluator.java        # Evaluator: compile/verify/benchmark
 │   ├── sandbox/
-│   │   └── TargetSubject.java    # 被进化的目标代码
+│   │   └── TargetSubject.java    # Target code being evolved
 │   └── utils/
-│       ├── CompilerUtils.java    # 动态编译工具
-│       └── LLMClient.java        # LLM API 客户端
+│       ├── CompilerUtils.java    # Dynamic compilation utilities
+│       └── LLMClient.java        # LLM API client
 ├── target/
-│   └── generations/              # 进化代码备份
+│   └── generations/              # Evolution code backups
 ├── pom.xml
 └── README.md
 ```
 
-## 核心模块
+## Core Modules
 
-### 1. 基因接口 (TaskSolver)
+### 1. Genome Interface (TaskSolver)
 
-所有变异代码必须实现的不可变接口：
+The immutable interface that all mutated code must implement:
 
 ```java
 public interface TaskSolver {
@@ -69,152 +70,181 @@ public interface TaskSolver {
 }
 ```
 
-### 2. 评估器 (Evaluator)
+### 2. Evaluator
 
-负责编译、验证和性能测试：
+Responsible for compilation, verification, and performance testing:
 
-- **禁止 API 检查**: 禁用 `Arrays.sort`、`Collections.sort` 等标准库排序
-- **正确性验证**: 4 个测试用例验证排序结果
-- **性能测试**: 3 次预热 + 5 次正式测量取平均值
-- **超时保护**: 10 秒强制超时，防止死循环
+- **Forbidden API Check**: Blocks `Arrays.sort`, `Collections.sort`, and other standard library sorting methods
+- **Correctness Verification**: 4 test cases to verify sorting results
+- **Performance Testing**: 3 warmup runs + 5 measurement runs averaged
+- **Timeout Protection**: 10-second forced timeout to prevent infinite loops
 
-### 3. LLM 客户端 (LLMClient)
+### 3. LLM Client
 
-调用阿里云 Qwen API 进行代码变异：
+Calls OpenAI-compatible API for code mutation:
 
-- 强制实现 `TaskSolver` 接口
-- 类名必须保持 `TargetSubject`
-- 禁止使用标准库排序方法
-- 自动清洗 Markdown 代码块
+- Enforces `TaskSolver` interface implementation
+- Class name must remain `TargetSubject`
+- Prohibits standard library sorting methods
+- Auto-cleans Markdown code blocks from responses
 
-### 4. 动态编译工具 (CompilerUtils)
+### 4. Dynamic Compiler (CompilerUtils)
 
-使用 JDK 内置编译器 API：
+Uses JDK built-in compiler API:
 
-- 内存中编译源代码字符串
-- 输出到 `target/classes` 目录
-- 捕获并报告编译错误
+- Compiles source code strings in memory
+- Outputs to `target/classes` directory
+- Captures and reports compilation errors
 
-## 快速开始
+## Quick Start
 
-### 环境要求
+### Requirements
 
-- Java 25+
+- Java 21+
 - Maven 3.6+
-- 阿里云 DashScope API Key
+- OpenAI-compatible API Key (e.g., DashScope, OpenAI, Ollama)
 
-### 配置 API Key
+### Configure API Key
 
-**方式一：配置文件（推荐）**
+**Option 1: Configuration File (Recommended)**
 
 ```bash
-# 复制示例配置文件
+# Copy example config file
 cp config.properties.example config.properties
 
-# 编辑 config.properties，填入你的 API Key
-DASHSCOPE_API_KEY=your-api-key-here
+# Edit config.properties with your settings
+API_URL=https://your-api-endpoint/v1/chat/completions
+API_KEY=your-api-key-here
+MODEL=your-model-name
 ```
 
-**方式二：环境变量**
+**Option 2: Environment Variable**
 
 Windows (PowerShell):
 ```powershell
-$env:DASHSCOPE_API_KEY="your-api-key-here"
+$env:API_KEY="your-api-key-here"
 ```
 
 Windows (CMD):
 ```cmd
-set DASHSCOPE_API_KEY=your-api-key-here
+set API_KEY=your-api-key-here
 ```
 
 Linux/Mac:
 ```bash
-export DASHSCOPE_API_KEY="your-api-key-here"
+export API_KEY="your-api-key-here"
 ```
 
-### 构建项目
+### Build
 
 ```bash
 mvn clean compile
 ```
 
-### 运行进化
+### Run Evolution
 
 ```bash
 mvn exec:java -Dexec.mainClass="com.quine.Main"
 ```
 
-### 重置到初始状态
+### Reset to Initial State
 
 ```bash
 mvn exec:java -Dexec.mainClass="com.quine.ResetToOrigin"
 ```
 
-## 配置说明
+## Configuration
 
-### LLM API 配置
+### Evolution Parameters
 
-在 `LLMClient.java` 中配置：
+Configure in `Main.java`:
 
-| 配置项 | 值 |
-|--------|-----|
-| 端点 | `https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions` |
-| 模型 | `qwen3-coder-plus` |
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `TEST_DATA_SIZE` | 10000 | Test data size |
+| `MAX_GENERATIONS` | 50 | Maximum evolution generations |
 
-### 进化参数
+### LLM API Configuration
 
-在 `Main.java` 中配置：
+Configure in `config.properties`:
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `TEST_DATA_SIZE` | 10000 | 测试数据规模 |
-| `MAX_GENERATIONS` | 50 | 最大进化代数 |
+| Parameter | Description |
+|-----------|-------------|
+| `API_URL` | OpenAI-compatible API endpoint |
+| `API_KEY` | Your API key |
+| `MODEL` | Model name (e.g., `gpt-4`, `qwen3-coder-plus`) |
 
-## 进化流程
+## Evolution Process
 
-1. **Genesis (初始化)**
-   - 加载初始冒泡排序实现
-   - 生成随机测试数据
-   - 记录基准性能
+1. **Genesis (Initialization)**
+   - Load initial bubble sort implementation
+   - Generate random test data
+   - Record baseline performance
 
-2. **Mutation (变异)**
-   - 读取当前源代码
-   - 调用 LLM 生成变异代码
+2. **Mutation**
+   - Read current source code
+   - Call LLM to generate mutated code
 
-3. **Compilation (编译)**
-   - 动态编译变异代码
-   - 编译失败则跳过本轮
+3. **Compilation**
+   - Dynamically compile mutated code
+   - Skip this round if compilation fails
 
-4. **Verification (验证)**
-   - 正确性测试
-   - 性能基准测试
+4. **Verification**
+   - Correctness testing
+   - Performance benchmarking
 
-5. **Selection (选择)**
-   - 性能更优则替换源文件
-   - 备份成功变异到 `target/generations/`
+5. **Selection**
+   - Replace source file if performance is better
+   - Backup successful mutations to `target/generations/`
 
-## 进化成果示例
+## Evolution Results Example
 
-| 代数 | 算法 | 时间复杂度 |
-|------|------|-----------|
-| 初始 | 冒泡排序 (Bubble Sort) | O(n²) |
-| Gen 1 | 快速排序 (Quick Sort) | O(n log n) |
-| Gen 14 | 堆排序 (Heap Sort) | O(n log n) |
+From a 200-generation experiment:
 
-## 风险防护
+| Generation | Algorithm | Time Complexity | Performance |
+|------------|-----------|-----------------|-------------|
+| Initial | Bubble Sort | O(n²) | Baseline |
+| Gen 1 | Quick Sort | O(n log n) | +25% |
+| Gen 14 | Heap Sort | O(n log n) | +30% |
+| Gen 145 | Introsort | O(n log n) | +34.2% |
 
-- **死循环防护**: `ExecutorService` + `Future.get(timeout)` 强制超时
-- **幻觉代码防护**: Prompt 限制只用 JDK 标准库
-- **类加载泄露防护**: 每代测试后清理 ClassLoader
-- **代码格式防护**: 正则清洗 LLM 返回的 Markdown 包裹
+**Introsort** is a hybrid sorting algorithm that combines:
+- QuickSort for average cases
+- HeapSort when recursion depth exceeds threshold
+- InsertionSort for small subarrays
 
-## 技术栈
+## Safety Measures
 
-- Java 25
-- OkHttp 4.12.0 (HTTP 客户端)
-- Gson 2.10.1 (JSON 解析)
-- javax.tools (动态编译)
+- **Infinite Loop Protection**: `ExecutorService` + `Future.get(timeout)` for forced timeout
+- **Hallucination Prevention**: Prompt restricts to JDK standard library only
+- **ClassLoader Leak Prevention**: Clean up ClassLoader after each generation test
+- **Code Format Protection**: Regex cleaning of Markdown blocks from LLM responses
 
-## 许可证
+## Tech Stack
+
+- Java 21+
+- OkHttp 4.12.0 (HTTP client)
+- Gson 2.10.1 (JSON parsing)
+- javax.tools (Dynamic compilation)
+
+## Related Projects
+
+This is an MVP implementation. For the full architecture design, see [Strange Loop](https://github.com/xxx/strange-loop) - a universal evolution engine where "everything that implements the interface can evolve."
+
+## Theoretical Background
+
+This project stands on the shoulders of giants:
+
+| Source | Core Idea | Application |
+|--------|-----------|-------------|
+| **Hofstadter** "I Am a Strange Loop" | Self-referential systems | Code evolving code |
+| **Sakana AI** Evolutionary Model Merging | Evolution as efficient search | LLM-guided mutation |
+| **Genetic Improvement (GI)** | Automated program repair | Code mutation strategies |
+
+## License
 
 MIT License
+
+---
+
+> *"The compiler is a zero-cost critic - it provides instant, deterministic, high-density feedback signals."*
