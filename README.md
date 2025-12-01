@@ -227,9 +227,6 @@ From a 200-generation experiment:
 - Gson 2.10.1 (JSON parsing)
 - javax.tools (Dynamic compilation)
 
-## Related Projects
-
-This is an MVP implementation. For the full architecture design, see [Strange Loop](https://github.com/xxx/strange-loop) - a universal evolution engine where "everything that implements the interface can evolve."
 
 ## Theoretical Background
 
